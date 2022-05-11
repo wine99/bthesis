@@ -1,0 +1,48 @@
+\section{去糖化}
+
+语法糖是由英国计算机科学家彼得·兰丁发明的一个术语，
+指计算机语言中添加的某种语法，这种语法对语言的功能没有影响，
+但是更方便程序员使用。
+语法糖让程序更加简洁，有更高的可读性。
+
+一个实用的通用编程语言会提供非常多的功能，但从语言实现的角度考虑，
+在编译之前将语言的某些部分转换成使用其他更核心的部分来实现，
+能让语言维持一个比较小的核心，以便更容易维护同时也更具灵活性。
+我们把该步骤称为去糖化，对应的编译过程（pass）称为 shrink。
+
+本文实现的语言中，布尔与、或运算并不属于核心语言，它们会被编译成 if 语句。
+\begin{small}
+\begin{align*}
+  \CAND{e_1}{e_2} & \quad \Rightarrow \quad \CIF{e_1}{e_2}{\FALSE{}}\\
+  \COR{e_1}{e_2} & \quad \Rightarrow \quad \CIF{e_1}{\TRUE{}}{e_2}
+\end{align*}
+\end{small}
+
+这个转换维持了与、或运算的短路特性。该转换的代码实现如下：
+
+\begin{lstlisting}
+(define (shrink-exp e)
+  (match e
+    [(or (Int _) (Var _) (Bool _) (Void))
+     e]
+    [(Let x rhs body)
+     (Let x (shrink-exp rhs) (shrink-exp body))]
+    [(Prim 'and (list e1 e2))
+     (If (shrink-exp e1)
+         (shrink-exp e2)
+         (Bool #f))]
+    [(Prim 'or (list e1 e2))
+     (If (shrink-exp e1)
+         (Bool #t)
+         (shrink-exp e2))]
+    [(Prim op es) (Prim op (map shrink-exp es))]
+    ...
+\end{lstlisting}
+
+代码中出现的\code{\#t, \#f}与\code{true, false}相同。
+这里处理程序，或者说操作语法树的方法是使用自然递归，也叫结构化递归，
+即在结构的子结构上进行递归。
+例如，在转换与、或运算时，先对两个运算数进行递归转换，
+然后把转换的结果放入 if 表达式中。
+这样我们就可以处理任意复杂的与、或运算。
+后面的绝大部分编译过程也是如此。

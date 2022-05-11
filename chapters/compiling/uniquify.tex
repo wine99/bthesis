@@ -1,0 +1,20 @@
+\section{标识符唯一化}
+
+由于 x86-64 以及后面使用的线性的中间代码不具备作用域，
+也为了方便后续对程序进行分析，
+我们需要确保所有的标识符的名字是唯一的，包括变量名和参数名，
+就像下面这样。
+
+\begin{transformation}
+\begin{lstlisting}
+(let ([x (let ([x 4])
+            (+ x 1))])
+  (+ x 2))
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+(let ([x.2 (let ([x.1 4])
+              (+ x.1 1))])
+  (+ x.2 2))
+\end{lstlisting}
+\end{transformation}
