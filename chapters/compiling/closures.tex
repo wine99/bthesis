@@ -1,0 +1,78 @@
+% !TeX root = ../main.tex
+
+\section{处理函数}
+
+\subsection{区分函数和局部变量}
+
+编译器前端生成的语法树，在没有进行语义分析之前，
+没有也无法区分函数名和变量名。
+但是对于访问函数，无论是直接调用还是将其赋值给其他变量，
+我们需要将其翻译成 leaq 指令，这和访问变量是不同的。
+因此我们需要区分开来函数名和变量名。
+
+由于我们已经进行了标识符唯一化，这个工作就变得非常简单。
+就像处理可变变量那样，我们引入 Funref 结构体，
+把所有出现的使用全局定义的函数名的地方，全部换成 Funref 语句即可。
+后面翻译为 x86 时再将其翻译为 leaq 指令。
+例如：
+
+\begin{transformation}
+\begin{lstlisting}
+(define (f) : Integer
+  ...)
+(let ([g f])
+  g)
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+(define (f) : Integer
+  ...)
+(let ([g (Funref f)])
+  g)
+\end{lstlisting}
+\end{transformation}
+
+\subsection{生成闭包}
+
+如果一个变量出现在 e 中，但在 e 中没有定义，
+那么就称该变量在表达式 e 中是“自由变量”。
+
+例如，在下面的表达式中，x 和 y 为自由变量。
+\begin{lstlisting}
+(lambda: ([z : Integer]) : Integer
+  (+ x (+ y z)))
+\end{lstlisting}
+
+而闭包则是引用了自由变量的函数，被引用的自由变量和函数一同存在，
+即使已经离开了自由变量的环境也不会被释放或者删除，在闭包中可以继续使用这个自由变量。
+
+例如：
+\begin{lstlisting}
+(define (f) : (-> Integer)
+  (let ([x 0])
+    (lambda: () : Integer x)))
+((f))
+\end{lstlisting}
+
+其中 f 是一个无参函数，在其内部定义了一个局部变量 x，初始值为 0。
+调用 f 会返回一个匿名的无参函数，再调用这个匿名函数会返回 x 的值，也就是 0。
+显然，我们需要某种方法来使得在执行这个匿名函数时，能正确读取到自由变量 x 的值。
+
+
+
+
+\subsection{赋值对闭包的影响}
+
+考虑下面这个例子：
+
+\begin{lstlisting}
+(define (f) : (-> Integer)
+  (let ([x 0])
+    (let ([g (lambda: () : Integer x)])
+      (begin
+        (set! x 42)
+        g))))
+((f))
+\end{lstlisting}
+
+

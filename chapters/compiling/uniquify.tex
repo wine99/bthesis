@@ -1,3 +1,5 @@
+% !TeX root = ../main.tex
+
 \section{标识符唯一化}
 
 由于 x86-64 以及后面使用的线性的中间代码不具备作用域，
@@ -5,6 +7,7 @@
 我们需要确保所有的标识符的名字是唯一的，包括变量名和参数名，
 就像下面这样。
 
+以 let 语句为例，标识符唯一化将进行如下的转换：
 \begin{transformation}
 \begin{lstlisting}
 (let ([x (let ([x 4])
@@ -13,8 +16,44 @@
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
-(let ([x.2 (let ([x.1 4])
-              (+ x.1 1))])
-  (+ x.2 2))
+(let ([x2 (let ([x1 4])
+              (+ x1 1))])
+  (+ x2 2))
 \end{lstlisting}
 \end{transformation}
+
+这个编译过程的实现如下：
+
+\begin{lstlisting}
+(define ((uniquify-exp env) e)
+  (define recur (uniquify-exp env))
+  (match e
+    [(or (Int _) (Bool _) (Void)) e]
+    [(Var x) (Var (dict-ref env x))]
+    [(Let x e body)
+     (let ([new-x (gensym x)])
+       (Let new-x
+            (recur e)
+            ((uniquify-exp (dict-set env x new-x)) body)))]
+    [(If e1 e2 e3)
+     (If (recur e1) (recur e2) (recur e3))]
+    [(SetBang x e)
+     (SetBang (dict-ref env x) (recur e))]
+    ...
+\end{lstlisting}
+
+这时处理语法树的递归函数上除了当前结点这一参数外，
+还多了一个 env 参数，这个参数是一个字典，
+每当绑定一个变量时，
+我们使用 \code{gensym} 函数生成一个全局唯一的符号作为新变量名，
+并在字典中加入新的键值对，键为变量名，值为新变量名。
+使用变量时，也就是访问变量或对变量赋值时，
+我们查找这个字典，对变量名进行替换。
+函数的参数也需要进行相同的处理。
+在遇到函数定义时把原参数名和新生成的唯一参数名作为键值对加入字典，
+在函数体内使用该字典进行标识符替换。
+
+其中，\code{gensym} 可以接受一个字符串或符号参数，
+生成的符号将以这个参数作为前缀。
+例如\code{(gensym 'print)}将会生成类似\code{print46352}的符号。
+这个功能可以帮助我们生成更易读、易调试的中间代码。

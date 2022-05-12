@@ -117,7 +117,7 @@
 \newcommand{\Op}{\itm{op}}
 \newcommand{\key}[1]{\texttt{#1}}
 \newcommand{\skey}[1]{\texttt{'#1'}}
-\newcommand{\code}[1]{\begin{small}\texttt{#1}\end{small}}
+\newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\scode}[1]{\texttt{'#1'}}
 
 \newcommand{\LP}{\key{(}}
@@ -141,8 +141,8 @@
 \newcommand{\PROGRAM}[2]{\LP\code{Program}~#1~#2\RP}
 \newcommand{\VAR}[1]{\key{(Var}~#1\key{)}}
 \newcommand{\BOOL}[1]{\key{(Bool}~#1\key{)}}
-\newcommand{\TRUE}{\key{true}}
-\newcommand{\FALSE}{\key{false}}
+\newcommand{\TRUE}{\key{\#t}}
+\newcommand{\FALSE}{\key{\#f}}
 \newcommand{\UNIOP}[2]{\key{(Prim}~#1~\code{(}#2\code{))}}
 \newcommand{\CUNIOP}[2]{\LP #1~#2 \RP}
 \newcommand{\BINOP}[3]{\key{(Prim}~#1~\code{(}#2~#3\code{))}}

@@ -1,3 +1,5 @@
+% !TeX root = ../main.tex
+
 \section{去糖化}
 
 语法糖是由英国计算机科学家彼得·兰丁发明的一个术语，
@@ -11,12 +13,20 @@
 我们把该步骤称为去糖化，对应的编译过程（pass）称为 shrink。
 
 本文实现的语言中，布尔与、或运算并不属于核心语言，它们会被编译成 if 语句。
-\begin{small}
 \begin{align*}
   \CAND{e_1}{e_2} & \quad \Rightarrow \quad \CIF{e_1}{e_2}{\FALSE{}}\\
   \COR{e_1}{e_2} & \quad \Rightarrow \quad \CIF{e_1}{\TRUE{}}{e_2}
 \end{align*}
-\end{small}
+\begin{comment}
+\begin{transformation}
+\CAND{e_1}{e_2}
+\compilesto
+\begin{lstlisting}
+\CIF{e_1}{e_2}{\FALSE{}}
+\end{lstlisting}
+\end{transformation}
+\end{comment}
+
 
 这个转换维持了与、或运算的短路特性。该转换的代码实现如下：
 

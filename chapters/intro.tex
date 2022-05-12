@@ -61,15 +61,16 @@ Scheme 是一门极简主义 Lisp 方言，采用了词法作用域，
 具体的设计将在“实现语言和源语言”一章中给出。
 使用到的 x86-64 指令集将在“目标语言“一章中给出。
 
-编译器的主要流程包括去糖化（shrink），变量唯一化（uniquify），
-赋值转换（uncover get 和 convert assignments），
-函数转换为闭包（reveal functions 和 convert to closures），
-内存分配显示化（expose allocations），
-操作数原子化（remove complex operands），
-控制流显示化（explicate control），
-指令选择（select instructions），
-寄存器分配（uncover live, build interference graph 和 allocate registers），
-整理指令（patch instructions 和 prelude and conclusion）。
+编译器的主要流程包括去糖化，
+变量唯一化，
+赋值转换，
+函数转换为闭包，
+内存分配显示化，
+操作数原子化，
+控制流显示化，
+指令选择，
+寄存器分配，
+整理指令。
 具体算法流程将在“编译过程”一章中给出。
 
 本文还设计实现了一个简单的图形界面，允许我们在输入框中输入一段代码，并排展示出每一趟的编译结果，
