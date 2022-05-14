@@ -1,0 +1,135 @@
+% !TeX root = ../../main.tex
+
+\section{显示化控制流}
+
+这一趟编译过程将把我们的语言翻译成类似四元式的序列，
+复杂的控制结构将会变成一些包含跳转语句的简单的语句序列。考虑下面的程序：
+
+\begin{lstlisting}
+(let ([y (let ([x 20])
+           (+ x (let ([x 22]) x)))])
+  y)
+\end{lstlisting}
+
+前面描述的编译过程会把程序翻译成左边的结果，
+显示化控制流则进一步得到右边的过程：
+
+\begin{transformation}
+\begin{lstlisting}
+(let ([y (let ([x1 20])
+           (let ([x2 22])
+             (+ x1 x2)))])
+  y)
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+start:
+  x1 = 20;
+  x2 = 22;
+  y = (+ x1 x2);
+  return y;
+\end{lstlisting}
+\end{transformation}
+
+我们先来考虑最简单的情况：假设程序不包含分支指令，
+也不包含可变变量带来的结构，
+即只关心最后一个表达式的返回值的\code{Begin}语句和循环语句。
+那么程序就只剩下变量定义和运算
+（当然还有函数，但是这趟编译过程正是针对每个函数单独处理的，
+而函数调用则和运算按同样的方式处理）。
+可以看到，就像上面的例子一样，最终的结果就是一系列的赋值语句和一个返回语句。
+返回语句是由处于尾位置的表达式编译得到的为。尾位置的定义如下：
+
+\begin{enumerate}
+\item \code{(FunctionDef params body)}中，\code{body}处于尾位置。
+\item 如果 \code{(let x e body)} 处于尾位置，则\code{body}处于尾位置。
+\end{enumerate}
+
+我们使用两个相互递归的函数\code{explicate-tail} 和 \code{explicate-assign}来实现：
+\begin{lstlisting}
+(define (explicate-tail e)
+  (match e
+    [(or (Int n))
+     (Return (Int n))]
+    [(Let x rhs body)
+     (let ([instructions (explicate-tail body)])
+       (explicate-assign rhs x instructions))]
+    ...
+    ))
+
+(define (explicate-assign e x cont)
+  (match e
+    [(Int n)
+     (append (Assign (Var x) (Int n))
+             cont)]
+    [(Let y rhs body)
+     (let ([new-cont (explicate-assign body x cont)])
+       (explicate-assign rhs y new-cont))]
+    ...))
+\end{lstlisting}
+
+\code{explicate-tail}函数应用于位于尾位置的表达式，
+而\code{explicate-assign} 函数应用于出现在 \key{let} 右侧的表达式。
+二者都返回一串四元式。
+
+如果\code{explicate-tail}收到的表达式不是\code{let}表达式，
+那么就简单的返回一个四元式\code{return}。
+如果是let，那么let中的body部分就属于尾位置，
+对其递归调用\code{explicate-tail}，得到一串四元式instructions，
+把变量名，let语句的右侧，以及这串四元式作为参数传递给\code{explicate-tail}。
+\code{explicate-tail}对let语句的右侧表达式进行判断，
+如果不是let，那么生成一个赋值四元式，把这个右侧表达式赋给变量名，然后添加到那串四元式的前面即可。
+这里用参数名cont来接收四元式序列，意思正是这串四元式将会变成赋值语句的continue。
+而如果let的右侧又是一个let，
+我们则应当先调用\code{explicate-tail}把这个内部let的body赋给外面的变量，
+得到一个新的cont，把它和内部let的变量名和右侧表达式再一次传给\code{explicate-tail}。
+就像上面的例子，我们先把\code{(+ x1 x2);}赋给y，\code{return y;}作为其cont，
+然后再把这两条语句作为为\code{x1, x2}赋值的语句的cont。
+可以说，这一趟编译过程生成四元式序列的过程是倒过来的。
+这种实现方式被叫做累积传递风格。
+
+接下来我们考虑上分支语句和赋值，扩展尾位置的定义。
+\begin{enumerate}
+\item 如果 \code{(if pred then else)} 处于尾位置，
+  则表达式\code{then}和\code{else}均处于尾位置。
+\item 如果 \code{(begin ... final-e)}处于尾位置，则 \code{final-e}处于尾位置。
+\end{enumerate}
+
+与此类似，我们再定义谓词位置和副作用位置，
+并相应地定义\code{explicate-pred}和\code{explicate-effect}函数。
+\code{explicate-effect}接收cont，
+\code{explicate-pred}则接收then-cont和else-cont，
+它们也都返回一串四元式序列。
+加入分支后，\code{explicate-pred}函数中要生成一些跳转语句，
+分别指向then-cont和else-cont。
+最终，这趟编译过程将能够完成下面这样的转换：
+
+\begin{transformation}
+\begin{lstlisting}
+(let ([x (read)])
+  (let ([y (read)])
+    (if (if (< x 1)
+            (eq? x 0)
+            (eq? x 2))
+        (+ y 2)
+        (+ y 10))))
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+start:
+   x = (read);
+   y = (read);
+   if (< x 1) goto block40;
+   else goto block41;
+block40:
+   if (eq? x 0) goto block38;
+   else goto block39;
+block41:
+   if (eq? x 2) goto block38;
+   else goto block39;
+block38:
+   return (+ y 2);
+block39:
+   return (+ y 10);
+\end{lstlisting}
+\end{transformation}

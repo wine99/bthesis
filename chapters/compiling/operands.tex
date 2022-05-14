@@ -1,0 +1,56 @@
+% !TeX root = ../../main.tex
+
+\section{原子化操作数}
+
+前面已经提到过，汇编语言指令的操作数不允许放置复杂表达式，
+只能是一个立即数或寄存器或内存位置。
+我们通过为每一个复杂的操作数引入一个新的 let 绑定，
+将复杂操作数绑定到新变量，然后使用新变量来代替复杂操作数，
+就像下面这样。
+
+\begin{transformation}
+\begin{lstlisting}
+(let ([x (+ 42 (- 10))])
+  (+ x 10))
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+(let ([x (let ([tmp1 (- 10)])
+            (+ 42 tmp1))])
+   (+ x 10))
+\end{lstlisting}
+\end{transformation}
+
+本文使用两个相互递归的函数：\code{rco-atom} 和 \code{rco-exp} 来实现这个过程。
+其思想是将 \code{rco-atom} 应用于需要成为原子的子表达式，
+将 \code{rco-exp} 应用于不需要原子化的子表达式。
+
+\code{rco-exp} 函数根据需要在其子表达式上分别调用
+\code{rco-atom} 和 \code{rco-exp}。
+\code{rco-atom}同样要对其接受的表达式分类讨论，
+继续在复合子表达式上相应的调用\code{(+ 42 (- 10))}或\code{rco-exp}。
+\code{rco-atom} 函数会返回两个东西：
+一个原子化的表达式（一个变量或者一个数字之类的）
+和一个将临时变量映射到原来的复杂操作数的列表。
+\code{rco-exp} 根据这个列表创造出一系列的 let 绑定，
+包裹在原表达式外面，并把原表达式的那些复杂操作数用原子化后的表达式进行替换。
+
+在上面的例子中，对表达式\code{(+ 42 (- 10))}应用\code{rco-exp}函数，
+\code{rco-exp}会对子表达式 \code{42} 和 \code{(- 10)} 分别应用\code{rco-atom}。
+前者返回42和空列表，后者返回变量tmp1和把tmp1映射到表达式\code{(- 10)}的列表。
+
+\begin{transformation}
+\begin{lstlisting}
+  (- 10)
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+tmp1
+((tmp1 . (- 10)))
+\end{lstlisting}
+\end{transformation}
+
+低效的实现可能会导致冗余变量的产生。
+我们要确保\code{rco-exp}只对需要的原子化的子表达式调用\code{rco-atom},
+\code{rco-atom}则要确保不要为本身就已经是原子的表达式再创建临时变量。
+
