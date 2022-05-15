@@ -1,6 +1,7 @@
 % !TeX root = ../../main.tex
 
 \section{显示化控制流}
+\label{sec:control}
 
 这一趟编译过程将把我们的语言翻译成类似四元式的序列，
 复杂的控制结构将会变成一些包含跳转语句的简单的语句序列。考虑下面的程序：
@@ -13,7 +14,7 @@
 
 前面描述的编译过程会把程序翻译成左边的结果，
 显示化控制流则进一步得到右边的过程：
-
+三
 \begin{transformation}
 \begin{lstlisting}
 (let ([y (let ([x1 20])

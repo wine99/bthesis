@@ -1,0 +1,222 @@
+% !TeX root = ../../main.tex
+
+\section{生成汇编}
+
+这一步我们会将上一节中生成的四元式序列转换为x86汇编指令序列。
+把四元式转换成汇编指令的过程非常直白，
+因为四元式只有运算、赋值、函数调用、跳转等少数几种可能的类别，
+并且运算的操作数和函数调用的参数都是原子表达式。
+唯一的难点在于四元式包含变量，变量名当然是无穷多的，
+但x86没有变量，他只有寄存器和过程调用栈。
+在生成汇编这趟过程中，我们保留这些变量名，
+在下一趟编译过程再把这些变量放到合适的寄存器或栈上去。
+
+接下来我们举一些典型的四元式来说明生成汇编的过程。
+首先是整数运算操作，以加法为例：
+\begin{transformation}
+\begin{lstlisting}
+    |$\itm{var}$| = (+ |$\Atm_1$| |$\Atm_2$|);
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+    movq |$\Arg_1$|, |$\itm{var}$|
+    addq |$\Arg_2$|, |$\itm{var}$|
+\end{lstlisting}
+\end{transformation}
+
+翻译运算操作时要注意可以优化的情况。
+比如，如果加法的一个参数与赋值的左边的变量相同，那么就不需要额外的 move 指令。
+整个赋值语句可以被翻译成一条 addq 指令：
+\begin{transformation}
+\begin{lstlisting}
+    |$\itm{var}$| = (+ |$\Atm_1$| |$\itm{var}$|);
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+    addq |$\Arg_1$|, |$\itm{var}$|
+\end{lstlisting}
+\end{transformation}
+
+read 函数在 x86 汇编中没有直接对应的功能，
+所以我们在 runtime.c 中用 C 语言实现一个 \code{read\_int} 函数来提供这个功能。
+前文提到，runtime.c 中还包括垃圾回收器以及一些全局变量，
+这些功能合在一起被称为“运行时系统”，或简称为“运行时”。
+\begin{transformation}
+\begin{lstlisting}
+    |$\itm{var}$| = (read);
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+    callq read_int
+    movq %rax, |$\itm{var}$|
+\end{lstlisting}
+\end{transformation}
+
+Return语句的翻译方法和上面两个例子是一样的，只要把赋值左边的var改为\%rax即可。
+对于布尔值真和假，我们把它们分别编译成立即数1和0。
+然后是布尔运算\code{not}：
+\begin{transformation}
+\begin{lstlisting}
+    |$\itm{var}$| = (not |$\Atm$|);
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+    movq |$\Arg$|, |$\itm{var}$|
+    xorq $1, |$\itm{var}$|
+\end{lstlisting}
+\end{transformation}
+和整数运算一样，这里也需要考察atm来判断能否优化进而减少一条指令。
+接下来我们看一下x86对布尔运算和条件分支提供的支持。
+
+cmpq 指令比较它的两个参数来确定一个参数是小于、等于还是大于另一个参数。
+cmpq 指令在参数的顺序和结果放置的位置上不太一样。
+参数顺序是颠倒的：如果我们想知道 x 是不是小于 y，就需要写 \code{cmpq y, x}。
+cmpq 的结果被放置在特殊的 EFLAGS 寄存器中。
+这个寄存器不能直接访问，但可以通过许多指令进行查询。
+指令 \code{set}cc \code{d} 根据条件代码 cc
+（e 表示等于，l 表示小于，le 表示不等于，g 表示大于，ge 表示大于等于），
+将立即数 1 或 0 放入目标 d 中。
+还需要注意的是d必须是单字节寄存器，例如al或 ah，它们是 rax 寄存器的一部分。
+movzbq 指令可以将单个字节寄存器中的值移到 64 位寄存器里。
+综上所述，\code{eq?}运算可以被这样翻译：
+\begin{transformation}
+\begin{lstlisting}
+    |$\itm{var}$| = (eq? |$\Atm_1$| |$\Atm_2$|);
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+    cmpq |$\Arg_2$|, |$\Arg_1$|
+    sete %al
+    movzbq %al, |$\Var$|
+\end{lstlisting}
+\end{transformation}
+
+再来看 if 表达式的编译。
+指令 \code{j}cc label 更新程序计数器指向 label 之后的指令，
+这取决于 EFLAGS 寄存器中的结果是否与条件代码 cc 匹配，
+否则条件跳转指令还是继续执行下一条指令。
+因为条件跳转指令依赖于 EFLAGS 寄存器，
+所以通常它前面会立即有一个 cmpq 指令来设置 EFLAGS 寄存器。
+
+\begin{transformation}
+\begin{lstlisting}
+if (eq? |$\Atm_1$| |$\Atm_2$|) goto |$\ell_1$|;
+else goto |$\ell_2$|;
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+    cmpq |$\Arg_2$|, |$\Arg_1$|
+    je |$\ell_1$|
+    jmp |$\ell_2$|
+\end{lstlisting}
+\end{transformation}
+
+接下来考虑和向量有关的指令。我们保留r11寄存器，专门用它来访问向量也就是堆上的数据。
+\begin{transformation}
+\begin{lstlisting}
+|$\itm{var}$| = (vector-ref |$\itm{vec}$| |$n$|);
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+movq |$\itm{vec}$|, %r11
+movq |$8(n+1)$|(%r11), |$\itm{var}$|
+\end{lstlisting}
+\end{transformation}
+
+\begin{transformation}
+\begin{lstlisting}
+(vector-set! |$\itm{vec}$| |$n$| |$\itm{arg}$|);
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+movq |$\itm{vec}$|, %r11
+movq |$\itm{arg}$|, |$8(n+1)$|(%r11)
+\end{lstlisting}
+\end{transformation}
+
+\begin{transformation}
+\begin{lstlisting}
+|$\itm{vec}$| = (allocate |$n$| |$\itm{type}$|);
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+movq free_ptr(%rip), %r11
+addq |$8(n+1),$| free_ptr(%rip)
+movq $|$\itm{tag}$|, 0(%r11)
+movq %r11, |$\itm{var}$|
+\end{lstlisting}
+\end{transformation}
+
+\begin{transformation}
+\begin{lstlisting}
+    (collect |$\itm{bytes}$|);
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+movq %r15, %rdi
+movq $|\itm{bytes}|, %rsi
+callq collect
+\end{lstlisting}
+\end{transformation}
+
+\code{free\_ptr}中的地址是FromSpace中的下一个空闲地址，把它赋给\code{r11}，
+然后把它向前移动$8(n+1)$ 个字节以留出足够的空间来放置向量的内容
+（每个元素是8个字节（64位），以及一个64位的标签）。
+在编译时我们通过type信息计算出标签，放到向量的第0号位置。
+标签的组成参见图~\ref{fig:tuple-rep}处的描述。
+对垃圾回收函数collect的调用被编译成对运行时里的collect函数的调用，
+参数分别是根栈的顶部地址和需要分配的字节数。
+我们还保留了r15寄存器，专门用来保存指向根栈顶部的指针，它会在主程序的准备工作中被初始化。
+
+最后是函数。对于每个函数定义，我们都需要把参数从参数寄存器里移到对应的变量名中：
+\begin{transformation}
+\begin{lstlisting}
+       start:
+          |$\itm{instr}_1$|
+          |$\vdots$|
+          |$\itm{instr}_n$|
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+    start:
+       movq %rdi, |$x_1$|
+       movq %rsi, |$x_2$|
+       |$\vdots$|
+       |$\itm{instr}_1$|
+       |$\vdots$|
+       |$\itm{instr}_n$|
+\end{lstlisting}
+\end{transformation}
+
+函数赋值给变量成为 load-effective-address 指令：
+\begin{transformation}
+\begin{lstlisting}
+    |$\itm{var}$| = (fun-ref |$f$|);
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+    leaq (fun-ref |$f$|), |$\itm{var}$|
+\end{lstlisting}
+\end{transformation}
+
+然后是函数调用，正如\ref{subsec:call-in-x86}小节中所述，它们被编译成x86的间接函数调用：
+\begin{transformation}
+\begin{lstlisting}
+|\itm{var}| = (call |\itm{fun}| |$\itm{arg}_1~\itm{arg}_2\ldots$|));
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+    movq |$\itm{arg}_1$|, %rdi
+    movq |$\itm{arg}_2$|, %rsi
+    |$\vdots$|
+    callq *|\itm{fun}|
+    movq %rax, |\itm{var}|
+\end{lstlisting}
+\end{transformation}
+
+如果函数调用是尾巴调用，如\ref{subsec:tail-call}小节所述，
+我们要把上面的callq换成jmp，并在其前面加上弹出当前栈帧的一系列指令，
+但由于此时我们还没有进行寄存器分配，也没有生成函数的结束工作，
+我们不知道这些指令具体都有哪些，因此我们在这里引入一个临时的\code{TailJmp}指令来替换callq，
+后续分配完寄存器之后再把它替换成完整的弹出栈帧和跳转指令。
+
