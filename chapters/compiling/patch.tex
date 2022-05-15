@@ -1,0 +1,53 @@
+% !TeX root = ../main.tex
+
+\section{收尾工作}
+
+我们生成的x86指令中还存在一些不符合规范的地方。
+比如，x86中一条指令最多访存一次，
+而前面的编译过程可能会生成包含两次内存引用的代码，
+这时我们可以利用保留的rax寄存器做一次中转：
+
+\begin{transformation}
+\begin{lstlisting}
+movq -8(%rbp), -16(%rbp)
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+movq -8(%rbp), %rax
+movq %rax, -16(%rbp)
+\end{lstlisting}
+\end{transformation}
+
+如果间接函数调用指令的操作数没有被分配到寄存器上，
+而是使用了栈空间，我们同样要做一次中转：
+\begin{transformation}
+\begin{lstlisting}
+callq *-8(%rbp)
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+movq -8(%rbp), %rax
+callq *%rax
+\end{lstlisting}
+\end{transformation}
+
+前面的编译过程会引入很多临时变量，
+而图着色算法会把一些变量分配到同一个寄存器或栈位置，
+这就可能出现一些movq指令，它的两个操作数是一样的，我们可以直接把这些指令删除掉。
+
+最后就是为每个函数生成\ref{subsec:call-in-x86}小节中描述的准备工作和结束工作。
+在准备工作中，我们要把所有用到的被调用方保留寄存器存入栈中，
+因为这里面可能存放着调用这个函数的调用方的一些数据。
+结束工作中再把这些内容逆序弹出回这些寄存器里。
+准备工作中还要根据程序中向量的数量移动根栈指针r15。
+相应地，在结束工作中也需要把它移动回去。
+
+生成了结束工作后，我们还要把\ref{sec:x86}一节中临时创造的\code{TailJmp}指令换成
+真正的间接跳转指令\code{jmp *\%rax}，
+并在它的前面插入结束工作中除了retq之外的指令。
+最后，主程序的准备工作者还需要初始化垃圾回收器，
+即调用垃圾回收器的\code{initialize}函数和
+把根栈顶部\code{rootstack\_begin}送入根栈指针寄存器r15。
+
+至此，所有的编译工作均已完成，编译器已经能够将一段源程序编译成正确、合法的x86汇编程序，
+并且能和runtime.o一起被GCC编译套件链接生成一个能在x86-64平台的Linux系统上运行的可执行文件。

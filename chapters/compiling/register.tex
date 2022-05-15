@@ -1,0 +1,103 @@
+% !TeX root = ../../main.tex
+
+\section{寄存器分配}
+
+这一步将会把前一节生成的包含变量的x86指令变成真正的x86指令，
+包含三个步骤：活变量分析、建立变量之间的干涉图、根据干涉图分配寄存器或内存。
+
+\subsection{活变量分析}
+
+在程序中的某一个点，如果一个变量或寄存器的当前包含的内容在后面会被使用，
+我们就说这个变量或寄存器在当前这个点是活的。
+
+我们需要计算出每条指令后所有活变量的集合，
+对于不包含分支指令的简单情况，我们从后往前计算按下面的方法计算。
+
+设$I_1,\ldots, I_n$ 为指令序列。
+记指令 $I_k$ 之后的活变量集为$L_{\mathsf{after}}(k)$ ，
+ $I_k$ 之前为活变量集为 $L_{\mathsf{before}}(k)$ 。
+一条指令之后的活变量集与下一条指令之前的活变量集相同。
+\begin{equation} \label{eq:live-after-before-next}
+L_{\mathsf{after}}(k) = L_{\mathsf{before}}(k+1)
+\end{equation}
+开始时，在最后一条指令之后没有活变量，所以
+\begin{equation}\label{eq:live-last-empty}
+L_{\mathsf{after}}(n) = \emptyset
+\end{equation}
+然后我们重复应用以下规则，将指令序列从后向前遍历。
+\begin{equation}\label{eq:live-before-after-minus-writes-plus-reads}
+L_{\mathsf{before}}(k) = (L_{\mathsf{after}}(k) - W(k)) \cup R(k)
+\end{equation}
+其中 $W(k)$ 是指令 $I_k$ 中写入数据的变量或寄存器，
+$R(k)$ 是指令 $I_k$ 中读取数据的变量或寄存器。
+
+注意callq 指令应该在其写集 $W$ 中包含所有调用者保存寄存器，
+因为这些寄存器可能在函数调用期间被被调用者使用。
+同样，callq 指令应当根据调用的函数的参数个数，
+在其读集 $R$ 中包含适当的参数传递寄存器。
+
+从显示化控制流这一编译过程的输出开始，编译器的中间形式就从原来的树变成了图。
+每个标签下的一系列四元式或者一系列汇编指令，
+一直到下一个标签或者到结束，被称作一个基本块。
+跳转指令可以从一个基本块跳转到另一个基本块。
+二者分别作为有向图的顶点和边，构成了控制流图（CFG）\cite{Allen_1970}。
+
+加入了分支和循环之后，我们要考虑两个问题。第一个问题是跳转指令的活变量分析。
+假设第k条指令是跳转指令，它指向某一个基本块，
+记该基本块的第一条指令前面的活变量集为$L_{\mathsf{before'}}(1)$。
+如果是无条件跳转指令，则
+\begin{equation}\label{eq:live-jmp}
+L_{\mathsf{before}}(k) = L_{\mathsf{before'}}(1)
+\end{equation}
+如果是条件跳转指令，则
+\begin{equation}\label{eq:live-jmpcc}
+L_{\mathsf{before}}(k) = L_{\mathsf{before'}}(1) \cup L_{\mathsf{before}}(k+1)
+\end{equation}
+
+第二个问题是以什么样的顺序、重复多少次才能计算出各个基本块中各指令的$L_{\mathsf{after}}$。
+解决方法如下：对控制流图进行拓扑排序，选择最末尾的一个基本块开始分析，
+计算块内指令的live-after以及块的live-before，也就是第1条指令的live-before，
+如果块的live-before中的活变量在这趟分析后增加了，
+那么对于所有能跳转这个基本块的块都再进行一次分析，
+重复进行下去，直到所有块的live-before集合都不再增大。
+这种迭代分析控制流图的方法叫作数据流分析\cite{Kildall_1973}，
+它也适用于许多其他静态分析问题。
+下面的代码描述了这一迭代过程。其中\code{trans-G}是转置后的控制流图，
+用以计算哪些基本块指向了某一个块，
+\code{label->live}是一个字典，用于记录每个基本块的live-before集合。
+
+\begin{lstlisting}
+(while (not (queue-empty? worklist))
+  (define label (dequeue! worklist))
+  (define-values (new-block new-live-before)
+    (uncover-live-block (dict-ref blocks label) label->live))
+  (hash-set! new-blocks label new-block)
+  (unless (equal? new-live-before (hash-ref label->live label))
+    (hash-set! label->live label new-live-before)
+    (for ([label^ (in-neighbors trans-G label)])
+      (enqueue! worklist label^))))
+\end{lstlisting}
+
+\subsection{使用图着色算法进行分配}
+
+知道了任意时刻的活变量集合，我们就能知道某两个变量能不能被分配到同一个寄存器：
+如果它们在某一时刻同时是活变量，那我们显然不能把它们分配到同一个寄存器。
+把这种情况称之为两个变量互相干涉。我们创建一个无向图，称之为干涉图，
+顶点是所有变量，然后在所有干涉的变量之间添加边。
+
+接下来就是为图上的变量分配寄存器，
+用从 0 到k − 1 的整数对应于可以用来分配变量的 k 个寄存器。
+整数 k 及以上对应的是堆栈位置。
+这样一来寄存器分配就变成了图着色问题，这些整数就是可以使用的颜色，
+有边的顶点之间不能分配相同的颜色。
+
+本文使用的图着色算法是DSATUR算法\cite{Brélaz_1979}。
+其中 SATUR 是饱和度的缩写，它指的是一个顶点上的约束。
+我们为某一个顶点涂上一个颜色后，
+所有与它相邻的顶点就不能再选用这个颜色，也就多了一个约束。
+DSATUR算法每次都选择一个约束最少的顶点，给他涂上编号尽可能小的颜色，
+然后给相邻的为上色顶点加上约束，再在剩下的未上色顶点中重复这个过程。
+
+图着色完成后，我们就为所有变量都分配了一个寄存器或者一个栈上的空间。
+x86代码已经大致生成完毕，接下来只需要再整理一下一些不合法的x86指令，
+再添加上函数的准备工作和结束工作指令即可。
