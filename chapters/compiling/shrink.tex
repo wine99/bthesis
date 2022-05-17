@@ -13,17 +13,32 @@
 我们把该步骤称为去糖化，对应的编译过程（pass）称为 shrink。
 
 本文实现的语言中，布尔与、或运算并不属于核心语言，它们会被编译成 if 语句。
+\begin{transformation}
+\begin{lstlisting}
+       (and |$e_1$| |$e_2$|)
+        (or |$e_1$| |$e_2$|)
+\end{lstlisting}
+\compilesto
+\begin{lstlisting}
+      (if |$e_1$| |$e_2$| #f)
+      (if |$e_1$| #t |$e_2$|)
+\end{lstlisting}
+\end{transformation}
+
+
+\begin{comment}
 \begin{align*}
   \CAND{e_1}{e_2} & \quad \Rightarrow \quad \CIF{e_1}{e_2}{\FALSE{}}\\
   \COR{e_1}{e_2} & \quad \Rightarrow \quad \CIF{e_1}{\TRUE{}}{e_2}
 \end{align*}
+\end{comment}
+
 \begin{comment}
 \begin{transformation}
 \CAND{e_1}{e_2}
 \compilesto
 \begin{lstlisting}
 \CIF{e_1}{e_2}{\FALSE{}}
-\end{lstlisting}
 \end{transformation}
 \end{comment}
 
@@ -49,7 +64,6 @@
     ...
 \end{lstlisting}
 
-代码中出现的\code{\#t, \#f}与\code{true, false}相同。
 这里处理程序，或者说操作语法树的方法是使用自然递归，也叫结构化递归，
 即在结构的子结构上进行递归。
 例如，在转换与、或运算时，先对两个运算数进行递归转换，

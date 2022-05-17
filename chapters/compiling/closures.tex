@@ -116,10 +116,10 @@ f 接受一个参数 x，在其内部创建一个值为 4 的局部变量 y，�
 也不需要对其进行类型检查。
 之所以可以这么做是因为闭包是由编译器生成的，
 我们的转换代码可以保证我们总是能正确的使用这些闭包变量。
-而之所以要这么做是因为本文现有的类型系统无法正确地表示闭包的类型
-\footnote{正确描述闭包的类型需要使用存在类型\cite{Minamide_Morrisett_Harper_1996}。}
-：闭包中的元素间接指向了闭包自己——
+而之所以要这么做是因为本文现有的类型系统无法正确地表示闭包的类型：
+闭包中的元素间接指向了闭包自己——
 第一个元素是函数，而这个函数又接受这个闭包作为第一个参数。
+（想要正确描述闭包的类型需要使用存在类型\cite{Minamide_Morrisett_Harper_1996}。）
 
 \begin{figure}[t]
 \centering \includegraphics[width=0.6\textwidth]{figures/closures}
@@ -131,28 +131,28 @@ f 接受一个参数 x，在其内部创建一个值为 4 的局部变量 y，�
   \begin{minipage}{0.8\textwidth}
 % tests/lambda_test_6.rkt
 \begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
-(define (f [x : Integer]) : (Integer -> Integer)
+(define (f [x : Int]) : (Int -> Int)
   (let ([y 4])
-    (lambda: ([z : Integer]) : Integer
+    (lambda: ([z : Int]) : Int
       (+ x (+ y z)))))
 
-(define (main) : Integer
+(define (main) : Int
   (let ([g ((fun-ref f) 5)])
     (let ([h ((fun-ref f) 3)])
       (+ (g 11) (h 15)))))
 \end{lstlisting}
 $\Rightarrow$
 \begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
-(define (f [clos2 : _] [x : Integer]) : (Vector ((Vector _) Integer -> Integer))
+(define (f [clos2 : _] [x : Int]) : (Vector ((Vector _) Int -> Int))
   (let ([y 4])
     (vector (list (fun-ref lambda2) x y))))
 
-(define (lambda2 [clos3 : (Vector _ Integer Integer)] [z : Integer]) : Integer
+(define (lambda2 [clos3 : (Vector _ Int Int)] [z : Int]) : Int
   (let ([x (vector-ref clos3 1)])
     (let ([y (vector-ref clos3 2)])
       (+ x (+ y z)))))
 
-(define (main) : Integer
+(define (main) : Int
   (let ([g (let ([clos5 (vector (list (fun-ref f6)))])
              ((vector-ref clos5 0) clos5 5))])
     (let ([h (let ([clos6 (vector (list (fun-ref f6)))])

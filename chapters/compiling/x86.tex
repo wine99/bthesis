@@ -200,7 +200,7 @@ callq collect
 \end{lstlisting}
 \end{transformation}
 
-然后是函数调用，正如\ref{subsec:call-in-x86}小节中所述，它们被编译成x86的间接函数调用：
+然后是函数调用，正如第\ref{sec:call-in-x86}节中所述，它们被编译成x86的间接函数调用：
 \begin{transformation}
 \begin{lstlisting}
 |\itm{var}| = (call |\itm{fun}| |$\itm{arg}_1~\itm{arg}_2\ldots$|));
@@ -215,7 +215,7 @@ callq collect
 \end{lstlisting}
 \end{transformation}
 
-如果函数调用是尾巴调用，如\ref{subsec:tail-call}小节所述，
+如果函数调用是尾巴调用，如第\ref{sec:tail-call}节所述，
 我们要把上面的callq换成jmp，并在其前面加上弹出当前栈帧的一系列指令，
 但由于此时我们还没有进行寄存器分配，也没有生成函数的结束工作，
 我们不知道这些指令具体都有哪些，因此我们在这里引入一个临时的\code{TailJmp}指令来替换callq，
