@@ -217,8 +217,7 @@
     \itm{op} &::=& \key{+} \MID \key{-} \MID \key{*} \MID \key{quotient} \MID \key{remainder} \MID \key{and} \MID \key{or} \MID \key{not} \\
     \itm{cmp} &::= & \key{eq?} \MID \key{<} \MID \key{<=} \MID \key{>} \MID \key{>=} \\
 
-    \Exp &::=& \LP\Exp \; \Exp \ldots\RP \\
-          &\MID& \Int{} \MID \itm{bool} \MID \Var \MID \CREAD \MID \LP\key{void}\RP \\
+    \Exp &::=& \Int{} \MID \itm{bool} \MID \Var \MID \CREAD \MID \LP\key{void}\RP \\
           &\MID& \CNEG{\Exp} \MID (\itm{op}\;\Exp\;\Exp) \MID (\itm{cmp}\;\Exp\;\Exp) \\
           &\MID& \CLET{\Var}{\Exp}{\Exp} \MID \CIF{\Exp}{\Exp}{\Exp} \\
           &\MID& \CSETBANG{\Var}{\Exp} \MID \CBEGIN{\Exp}{\ldots} \MID \CWHILE{\Exp}{\Exp} \\
@@ -228,7 +227,7 @@
           &\MID& \CLAMBDA{\LP\LS\Var \key{:} \Type\RS\ldots\RP}{\Type}{\Exp} \\
     \Def &::=& \CDEF{\Var}{\LS\Var \key{:} \Type\RS \ldots}{\Type}{\Exp} \\
 
-    \Lang{} &::=& \Def\ldots \; \Exp
+    \Lang{} &::=& \Def\ldots \; \Exp\ldots
   \end{array}
 }
 
