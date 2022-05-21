@@ -37,7 +37,6 @@
 \begin{transformation}
 \CAND{e_1}{e_2}
 \compilesto
-\begin{lstlisting}
 \CIF{e_1}{e_2}{\FALSE{}}
 \end{transformation}
 \end{comment}
@@ -45,6 +44,7 @@
 
 这个转换维持了与、或运算的短路特性。该转换的代码实现如下：
 
+\begin{multilinecode}
 \begin{lstlisting}
 (define (shrink-exp e)
   (match e
@@ -63,6 +63,7 @@
     [(Prim op es) (Prim op (map shrink-exp es))]
     ...
 \end{lstlisting}
+\end{multilinecode}
 
 这里处理程序，或者说操作语法树的方法是使用自然递归，也叫结构化递归，
 即在结构的子结构上进行递归。

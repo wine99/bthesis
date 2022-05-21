@@ -6,29 +6,32 @@
 这一趟编译过程将把我们的语言翻译成类似四元式的序列，
 复杂的控制结构将会变成一些包含跳转语句的简单的语句序列。考虑下面的程序：
 
+\begin{multilinecode}
 \begin{lstlisting}
 (let ([y (let ([x 20])
            (+ x (let ([x 22]) x)))])
   y)
 \end{lstlisting}
+\end{multilinecode}
 
 前面描述的编译过程会把程序翻译成左边的结果，
 显示化控制流则进一步得到右边的过程：
 三
 \begin{transformation}
 \begin{lstlisting}
-(let ([y (let ([x1 20])
-           (let ([x2 22])
-             (+ x1 x2)))])
-  y)
+  (let ([y
+      (let ([x1 20])
+        (let ([x2 22])
+          (+ x1 x2)))])
+    y)
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
-start:
-  x1 = 20;
-  x2 = 22;
-  y = (+ x1 x2);
-  return y;
+    start:
+      x1 = 20;
+      x2 = 22;
+      y = (+ x1 x2);
+      return y;
 \end{lstlisting}
 \end{transformation}
 
@@ -41,12 +44,17 @@ start:
 可以看到，就像上面的例子一样，最终的结果就是一系列的赋值语句和一个返回语句。
 返回语句是由处于尾位置的表达式编译得到的为。尾位置的定义如下：
 
-\begin{enumerate}
-\item \code{(FunctionDef params body)}中，\code{body}处于尾位置。
-\item 如果 \code{(let x e body)} 处于尾位置，则\code{body}处于尾位置。
-\end{enumerate}
+(1) \code{(FunctionDef params body)}中，\code{body}处于尾位置。
 
-我们使用两个相互递归的函数\code{explicate-tail} 和 \code{explicate-assign}来实现：
+(2) 如果 \code{(let x e body)} 处于尾位置，则\code{body}处于尾位置。
+
+
+我们使用两个相互递归的函数explicate-tail 和 explicate-assign 来实现，如图\ref{fig:explicate-control-implementation}所示。
+
+\begin{figure}[t]
+\begin{center}
+\vspace{0.4em}
+\begin{tabular}{c}
 \begin{lstlisting}
 (define (explicate-tail e)
   (match e
@@ -68,9 +76,18 @@ start:
        (explicate-assign rhs y new-cont))]
     ...))
 \end{lstlisting}
+\end{tabular}
+\vspace{0.8em}
+\end{center}
 
-\code{explicate-tail}函数应用于位于尾位置的表达式，
-而\code{explicate-assign} 函数应用于出现在 \key{let} 右侧的表达式。
+    \caption{显示化控制流的实现}
+    \label{fig:explicate-control-implementation}
+\end{figure}
+\begin{multilinecode}
+\end{multilinecode}
+
+explicate-tail 函数应用于位于尾位置的表达式，
+而 explicate-assign 函数应用于出现在 \key{let} 右侧的表达式。
 二者都返回一串四元式。
 
 如果\code{explicate-tail}收到的表达式不是\code{let}表达式，

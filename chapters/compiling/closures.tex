@@ -18,23 +18,23 @@
 
 \begin{transformation}
 \begin{lstlisting}
-(define (f) : Integer
-  ...)
-(let ([g f])
-  g)
+  (define (f) : Integer
+    ...)
+  (let ([g f])
+    g)
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
-(define (f) : Integer
-  ...)
-(let ([g (Funref f)])
-  g)
+   (define (f) : Integer
+     ...)
+   (let ([g (Funref f)])
+     g)
 \end{lstlisting}
 \end{transformation}
 
 
 \subsection{限制参数数量}
-\ref{subsec:tail-call}小节中提到，为了优化尾部调用，
+\ref{sec:tail-call}节中提到，为了优化尾部调用，
 我们需要利用向量来把参数的数量限制在不超过六个。
 这一编译过程非常简单。对于每个函数定义，如果它超过六个参数
 我们用一个新的参数名来替换第六和后面的参数，新参数的类型是一个向量，
@@ -49,15 +49,18 @@
 那么就称该变量在表达式 e 中是“自由变量”。
 
 例如，在下面的表达式中，x 和 y 为自由变量。
+\begin{multilinecode}
 \begin{lstlisting}
 (lambda: ([z : Integer]) : Integer
   (+ x y z))
 \end{lstlisting}
+\end{multilinecode}
 
 而闭包则是引用了自由变量的函数，被引用的自由变量和函数一同存在，
 即使已经离开了自由变量的环境也不会被释放或者删除，在闭包中可以继续使用这个自由变量。
 
 例如：
+\begin{multilinecode}
 \begin{lstlisting}
 (define (f [x : Integer]) : (Integer -> Integer)
   (let ([y 4])
@@ -68,6 +71,7 @@
   (let ([h (f 3)])
     (+ (g 11) (h 15))))
 \end{lstlisting}
+\end{multilinecode}
 
 f 接受一个参数 x，在其内部创建一个值为 4 的局部变量 y，然后返回一个匿名函数。
 这个匿名函数接受一个参数 z，返回 \code{x+y+z} 的值。
@@ -170,6 +174,7 @@ $\Rightarrow$
 
 考虑下面这个例子：
 
+\begin{multilinecode}
 \begin{lstlisting}
 (define (f) : (-> Integer)
   (let ([x 0])
@@ -179,6 +184,8 @@ $\Rightarrow$
         g))))
 ((f))
 \end{lstlisting}
+\end{multilinecode}
+
 
 函数 f 中定义了局部变量 x，初始值为0。
 然后定义了一个无参匿名函数，函数体只有一个表达式 x。
@@ -204,6 +211,7 @@ $\Rightarrow$
 只有那些可能被重新赋值的（也就是在代码中出现在\code{set!}语句中的）自由变量才会被box。
 上面例子中的f函数，在转换后将得到以下结果。
 
+\begin{multilinecode}
 \begin{lstlisting}
 (define (f) : (-> Integer)
   (let ([x (vector 0)])
@@ -213,3 +221,4 @@ $\Rightarrow$
         (vector-set! x 0 42)
         g))))
 \end{lstlisting}
+\end{multilinecode}

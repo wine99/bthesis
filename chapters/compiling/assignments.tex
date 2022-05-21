@@ -4,11 +4,13 @@
 
 考虑这样的例子：
 
+\begin{multilinecode}
 \begin{lstlisting}
 (let ([x 2])
   (+ x
      (begin (set! x 40) x)))
 \end{lstlisting}
+\end{multilinecode}
 
 其中 begin 语句接受若干个表达式，依次执行，然后将最后一个表达式的结果返回。
 由于在我们的语言中，操作数先依次从左往右被求值，然后执行运算，
@@ -22,22 +24,24 @@
 
 \begin{transformation}
 \begin{lstlisting}
-(+ (+ x 1) 2)
+      (+ (+ x 1) 2)
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
-(let ([tmp (+ x 1)])
-  (+ tmp 2))
+    (let ([tmp (+ x 1)])
+      (+ tmp 2))
 \end{lstlisting}
 \end{transformation}
 
-但是对于上面包含赋值的例子，如果我们只是进行简单的提取替换，会得到下面的结果。
+但是对于上面包含赋值的例子，如果我们只是进行简单的提取替换，会得到下面的结果：
 
+\begin{multilinecode}
 \begin{lstlisting}
 (let ([x 2])
   (let ([tmp (begin (set! x 40) x)])
     (+ x tmp)))
 \end{lstlisting}
+\end{multilinecode}
 
 由于对 x 重新赋值的语句原来处于操作数的位置，它会被提取到加法运算的前面。
 显然，转换后的程序会得到错误的结果：80。
@@ -47,17 +51,20 @@
 当然，在最终翻译成汇编代码时，通过 get 语句访问变量和直接访问变量并没有区别。
 上面的程序将被转换成这样：
 
+\begin{multilinecode}
 \begin{lstlisting}
 (let ([x 2])
   (+ (get! x)
      (begin (set! x 40)
             (get! x))))
 \end{lstlisting}
+\end{multilinecode}
 
 这样一来，对这些变量的读取也会被提取到运算之前。
 只要原子化操作数这一过程按正确的顺序提取复杂操作数，
 我们就能得到正确的程序：
 
+\begin{multilinecode}
 \begin{lstlisting}
 (let ([x 2])
   (let ([tmp1 (get! x)])
@@ -65,6 +72,7 @@
                        (get! x))])
       (+ tmp1 tmp2))))
 \end{lstlisting}
+\end{multilinecode}
 
 赋值还会导致在编译闭包时出现另一个问题，
 我们将在后文描述闭包的实现时指出。

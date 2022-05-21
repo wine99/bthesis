@@ -16,14 +16,15 @@
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
-(let ([x2 (let ([x1 4])
-              (+ x1 1))])
-  (+ x2 2))
+  (let ([x2 (let ([x1 4])
+                (+ x1 1))])
+    (+ x2 2))
 \end{lstlisting}
 \end{transformation}
 
 这个编译过程的实现如下：
 
+\begin{multilinecode}
 \begin{lstlisting}
 (define ((uniquify-exp env) e)
   (define recur (uniquify-exp env))
@@ -34,13 +35,17 @@
      (let ([new-x (gensym x)])
        (Let new-x
             (recur e)
-            ((uniquify-exp (dict-set env x new-x)) body)))]
+            ((uniquify-exp
+              (dict-set env x new-x))
+             body)))]
     [(If e1 e2 e3)
      (If (recur e1) (recur e2) (recur e3))]
     [(SetBang x e)
      (SetBang (dict-ref env x) (recur e))]
     ...
 \end{lstlisting}
+\end{multilinecode}
+
 
 这时处理语法树的递归函数上除了当前结点这一参数外，
 还多了一个 env 参数，这个参数是一个字典，

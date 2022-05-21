@@ -2,10 +2,10 @@
 
 \hfutsetup{
   keywords = {
-    函数式编程语言，静态类型，编译器，Nanopass
+    函数式编程语言，Lisp，编译器，Nanopass
   },
   keywords* = {
-    Functional Programming Languages, Static Typing, Compilers, Nanopass
+    Functional Programming Languages, Lisp, Compilers, Nanopass
   },
 }
 
@@ -28,13 +28,19 @@
 作为计算机科学领域一门重要的基础学科，
 学习构建编译器能让我们更深刻地理解软件与硬件之间的关联，指导我们编写正确高效的代码。
 
-传统的编译器构造通常希望在一趟处理中完成尽可能多的工作
-，从而尽可能地缩短编译程序需要的时间。
+传统的编译器构造通常希望在一趟处理中完成尽可能多的工作，从而尽可能地缩短编译程序需要的时间。
 但这种方案缺乏灵活性，难以展示或修改编译过程中的特定步骤，不利于编译原理的研究学习。
 本文基于 Nanopass 思想，使用 Racket 语言，
 充分利用 Pattern Matching 和 Structural Recursion，
 实现了一个简单的静态类型 Lisp 方言的编译器，
-并详细展示了从语法树到生成 X86-64 汇编代码的所涉及的各种算法。
+并详细描述了从源程序到语法树再到汇编代码所涉及的各种算法。
+
+本系统能够从文件中读取源程序代码，解析生成语法树，
+历经十余趟变换后生成 x86-64 汇编程序，
+然后与一个使用 C 语言实现的运行时一同链接生成可执行文件。
+生成的可执行文件可以在类 Unix 系统下运行。
+本文还设计了一个展示每一趟编译过程的中间结果的图形界面程序，
+以此来可视化整个编译流程。
 
 \end{abstract}
 
@@ -60,7 +66,7 @@ guiding us to write correct and efficient code in the future.
 
 Traditional compiler constructions typically want to do
 as much work as possible in a single pass to minimize the time
-it takes to compile a program. However, this scheme lacks flexibility
+it takes to compile a program. However, this approach lacks flexibility
 and is difficult to display or modify a specific step in the
 compilation process, which is not conducive to the study of compilers.
 Based on the idea of Nanopass, this thesis implements
@@ -69,5 +75,12 @@ using the Racket programming language,
 making intensive use of Pattern Matching and Structural Recursion.
 Algorithms involved in all the way down to generate x86-64 assembly code
 from syntax trees are presented in detail.
+
+This system can parse the source code in a file to an abstract syntax tree,
+and generate x86-64 assembly code after more than a dozen of passes of transformation.
+The assembly code is then linked together with a runtime system implented in C,
+generating an executable that can run in Unix-like systems.
+This theis also designed a graphical user interface that shows
+the intermediate results of each pass to visualize the entire compilation process.
 
 \end{abstract*}

@@ -66,9 +66,11 @@
 
 下面这行代码是这个示例语言的一个合法的程序：
 
+\begin{onelinecode}
 \begin{lstlisting}
 (+ (read) (- 8))
 \end{lstlisting}
+\end{onelinecode}
 
 该程序对应的语法树如图\ref{fig:ast-eg}。
 
@@ -99,34 +101,41 @@
 图\ref{fig:con-syntax-eg}对应的抽象语法的描述如图\ref{fig:abs-syntax-eg}所示。
 其中\code{Int}，\code{Prim}等即为对应的Racket结构体的构造函数。
 这些结构体可以非常简单地被定义出来：
+\begin{multilinecode}
 \begin{lstlisting}
 (struct Int (value))
 (struct Prim (op args))
 \end{lstlisting}
+\end{multilinecode}
 
 构造结构体也非常简单，下面这行代码对应的即为具体语法为\code{(+ (read) (- 8))}的程序：
+\begin{multilinecode}
 \begin{lstlisting}
 (Prim '+
       (list (Prim 'read '())
             (Prim '- (list (Int 8))))
 \end{lstlisting}
+\end{multilinecode}
 
 而对结构体使用模式匹配，我们可以很方便地判断结构体的类型以及访问结构体的成员，也就是语法树的子树。
-例如，对于下面这段代码
+例如，下面这段代码将对变量\code{ast}进行模式匹配，
+如果变量是一个包含两个（可能复杂的）操作数的语法树，就打印操作符。
+同时，这段代码还会将两个操作数，也就是两个子树，分别绑定到变量\code{child1}和\code{child2}上去。
+例如，如果\code{ast}的值是\code{(+ (read) (- 8))}，
+则\code{child1}和\code{child2}的值将分别被赋值为\code{(read)}和\code{(- 8)}，
+并且代码将打印出\code{+}。
+\begin{multilinecode}
 \begin{lstlisting}
 (match ast
   [(Prim op (list child1 child2))
    (print op)])
 \end{lstlisting}
-将对变量\code{ast}进行模式匹配，如果变量是一个包含两个（可能复杂的）操作数的语法树，就打印操作符。
-同时，这段代码还会将两个操作数，也就是两个子树，分别绑定到变量\code{child1}和\code{child2}上去。
-例如，如果\code{ast}的值是\code{(+ (read) (- 8))}，
-则\code{child1}和\code{child2}的值将分别被赋值为\code{(read)}和\code{(- 8)}，
-并且代码将打印出\code{+}。
+\end{multilinecode}
 
 一个模式匹配当然也可能包含多个子句，这些子句将会从上到下依次被判断是否匹配。
 例如，下面这个\code{leaf?}函数接受一个名为ast的参数，判断该它是否是叶子节点：
 如果是一个数字或者\code{read}函数，则为叶子节点；如果是加运算或者取负运算，则不是叶子节点。
+\begin{multilinecode}
 \begin{lstlisting}
 (define (leaf? ast)
   (match ast
@@ -135,13 +144,16 @@
     [(Prim '- (list e1)) false]
     [(Prim '+ (list e1 e2)) false]))
 \end{lstlisting}
+\end{multilinecode}
 
 以下三行代码的返回值将分别为 \code{true, false, true}：
+\begin{multilinecode}
 \begin{lstlisting}
 (leaf (Prim 'read '()))
 (leaf (Prim '- (list (Int 8))))
 (leaf (Int 8))
 \end{lstlisting}
+\end{multilinecode}
 
 接下来我们看一下如何使用模式匹配，配合Racket的\code{read}函数来构造语法树。
 事实上，Racket提供的各种reader本身就已经是一个递归下降解析器。
@@ -151,6 +163,7 @@
 \code{('+ ('read) ('- 8))}。单引号表示这是一个符号。
 模式匹配可以对list和符号进行匹配。
 
+\begin{multilinecode}
 \begin{lstlisting}
 (define (parse e)
   (match e
@@ -161,6 +174,7 @@
     ...
     ))
 \end{lstlisting}
+\end{multilinecode}
 
 上面的\code{parse}函数就可以从list中构造出我们想要的语法树。
 如果它接收的参数是符号，则返回一个变量节点；
@@ -184,21 +198,8 @@
 
 在类型系统方面，本文没有实现类型推导，但只有函数的形式参数以及返回值需要显式声明类型，
 其余变量（即局部变量）定义时并不需要声明类型。
-例如，如下的代码是一个合法的程序。
+图\ref{fig:source-program-eg}是一个合法的程序。
 该程序从键盘读取一个（大于0的）整数，如果是偶数则返回1，奇数则返回0。
-\begin{lstlisting}
-(define (even? [x : Integer]) : Boolean
-  (if (eq? x 0)
-      #t
-      (odd? (- x 1))))
-
-(define (odd? [x : Integer]) : Boolean
-  (if (eq? x 0)
-      #f
-      (even? (- x 1))))
-
-(if (even? (read)) 1 0)
-\end{lstlisting}
 
 
 图\ref{fig:full-concrete-syntax}展示了源语言完整的具体语法。
@@ -245,3 +246,35 @@
   \caption{源语言的完整语法}
   \label{fig:full-concrete-syntax}
 \end{figure}
+
+
+\begin{figure}[t]
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}
+(define (even? [x : Integer]) : Boolean
+  (if (eq? x 0)
+      #t
+      (odd? (- x 1))))
+
+(define (odd? [x : Integer]) : Boolean
+  (if (eq? x 0)
+      #f
+      (even? (- x 1))))
+
+(if (even? (read)) 1 0)
+\end{lstlisting}
+\end{tabular}
+\end{center}
+    \caption{源程序示例}
+    \label{fig:source-program-eg}
+\end{figure}
+
+
+\section{本章小节}
+
+本章介绍了编译器前端的设计与实现。首先用一个示例语言说明了本文描述具体语法的方法，
+即巴克斯-诺尔范式，以及如何用该范式描述抽象语法及其与语法树的对应关系。
+然后讲解了如何使用Racket的结构体建立抽象语法对应的语法树，也就是编译器的前端部分，
+以及如何使用模式匹配来操纵它。
+最后用巴克斯-诺尔范式列出了源语言的完整语法，展示了源语言的一个示例程序。

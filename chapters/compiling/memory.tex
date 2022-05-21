@@ -8,6 +8,7 @@
 而堆允许我们通过引用来在不同的代码之间访问运行时创建的数据。
 也正因此，堆上的数据的生命周期是不确定的。
 
+\begin{multilinecode}
 \begin{lstlisting}
 (let ([v (vector (vector 44))])
   (let ([x (let ([w (vector 42)])
@@ -15,6 +16,7 @@
                0))])
     (+ x (vector-ref (vector-ref v 0) 0))))
 \end{lstlisting}
+\end{multilinecode}
 
 例如在上面这个例子中，变量 w 的生命周期在绑定完 x 后就结束了，
 但它指向的向量在这之后仍然可以被访问到，
@@ -131,38 +133,18 @@
 
 \subsection{展开向量定义}
 
-我们用c语言来实现垃圾回收器，编译生成一个目标文件，
-和我们的编译器翻译出的汇编代码生成的目标文件一起链接成最终的可执行文件。
-这个垃圾回收器提供了如下所示的几个接口。
-\begin{lstlisting}
-void initialize(uint64_t rootstack_size, uint64_t heap_size);
-void collect(int64_t** rootstack_ptr, uint64_t bytes_requested);
-int64_t* free_ptr;
-int64_t* fromspace_begin;
-int64_t* fromspace_end;
-int64_t** rootstack_begin;
-\end{lstlisting}
 
-initialize 函数初始化 FromSpace、ToSpace 和根栈，在主函数的准备工作中被调用。
-initialize 函数将 FromSpace 开头的地址放入全局变量 free\_ptr 中。
-全局变量 fromspace\_end 指向的地址是 FromSpace 的最后一个元素的后面一个位置。
-rootstack\_begin 变量指向根栈的第一个元素。
-
-只要 FromSpace 中还有剩余空间，生成的代码就可以通过向前移动 free\_ptr 来分配向量。
-FromSpace 中剩余的空间是 fromspace\_end 和 free\_ptr之间的差值。
-当 FromSpace 中没有足够的空间留给下一次分配时，就调用 collect 函数。
-collect 函数接受一个指向根栈当前顶部的指针 (栈顶元素的后面一个位置) 和需要分配的字节数。
-collect 函数执行前文描述的复制回收过程。
-
-编译器需要把一个简单的定义向量的语句翻译成一系列语句：
-1) 把向量的各个元素的表达式绑定到一系列临时变量上；
-2) 判断FromSpace是否有足够的空间，如果不够则调用 collect 函数；
-3) 调用 allocate 函数；
-4) 初始化向量。
-
+\begin{figure}[t]
+\begin{center}
+\vspace{0.4em}
+\begin{tabular}{c}
 \begin{lstlisting}
 (vector |$e_0 \ldots e_{n-1}$|)
-|$\Rightarrow$|
+\end{lstlisting}
+\\
+$\Downarrow$
+\\
+\begin{lstlisting}
 (let ([|$x_0$| |$e_0$|]
       [|$x_{n-1}$| |$e_{n-1}$|]
       ...)
@@ -177,6 +159,44 @@ collect 函数执行前文描述的复制回收过程。
         ([_ (vector-set! |$v$| |$n-1$| |$x_{n-1}$|)])
         |$v$|))))
 \end{lstlisting}
+\end{tabular}
+\vspace{0.8em}
+\end{center}
+
+    \caption{展开向量定义}
+    \label{fig:expose-vector}
+\end{figure}
+
+我们用C语言来实现垃圾回收器，编译生成一个目标文件，
+和我们的编译器翻译出的汇编代码生成的目标文件一起链接成最终的可执行文件。
+\begin{comment}
+这个垃圾回收器提供了如下所示的几个接口。
+\begin{lstlisting}
+void initialize(uint64_t rootstack_size, uint64_t heap_size);
+void collect(int64_t** rootstack_ptr, uint64_t bytes_requested);
+int64_t* free_ptr;
+int64_t* fromspace_begin;
+int64_t* fromspace_end;
+int64_t** rootstack_begin;
+\end{lstlisting}
+\end{comment}
+垃圾回收器提供了几个接口。
+其中 initialize 函数初始化 FromSpace、ToSpace 和根栈，在主函数的准备工作中被调用。
+initialize 函数将 FromSpace 开头的地址放入全局变量 free\_ptr 中。
+全局变量 fromspace\_end 指向的地址是 FromSpace 的最后一个元素的后面一个位置。
+rootstack\_begin 变量指向根栈的第一个元素。
+
+只要 FromSpace 中还有剩余空间，生成的代码就可以通过向前移动 free\_ptr 来分配向量。
+FromSpace 中剩余的空间是 fromspace\_end 和 free\_ptr之间的差值。
+当 FromSpace 中没有足够的空间留给下一次分配时，就调用 collect 函数。
+collect 函数接受一个指向根栈当前顶部的指针 (栈顶元素的后面一个位置) 和需要分配的字节数。
+collect 函数执行前文描述的复制回收过程。
+
+编译器需要把定义向量的表达式翻译成一系列表达式：
+1) 把向量的各个元素的表达式绑定到一系列临时变量上；
+2) 判断FromSpace是否有足够的空间，如果不够则调用 collect 函数；
+3) 调用 allocate 函数；
+4) 初始化向量。如图\ref{fig:expose-vector}所示。
 
 其中 allocate 接受参数len和向量的类型。
 len指的是向量的长度，而 bytes 是需要为向量分配的总字节数，

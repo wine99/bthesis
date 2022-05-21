@@ -2,11 +2,6 @@
 
 \chapter{目标平台介绍}
 
-本章简要介绍 x86-64 汇编语言的相关知识。
-我们首先通过一个简单的示例程序来讲解 x86-64 汇编语言的语法和过程调用栈，
-然后介绍我们选择的调用约定和寄存器分配策略，
-最后讲解如何在汇编层面为我们的函数式语言实现高效的尾调用。
-
 \section{x86-64 程序示例}
 
 本文使用 GNU 汇编器要求的 AT\&T x86-64 汇编语法。程序以 main 标签开始，后面跟着一系列指令。
@@ -22,30 +17,42 @@ x86 程序存储在计算机的内存中。就本文的目的而言，计算机�
 我们使用 \% 符号后跟寄存器名，比如 \code{\%rax}，来指代某一个寄存器。
 
 立即数使用语法 \code{\$n} 来指明，其中 n 是整数。
-访问内存使用语法 \code{n(\%r)} 来指明，它的意思是拿到存储在寄存器 r 中的地址，然后给地址加 n 个字节。
+访问内存使用语法 \code{n(\%r)} 来指明，
+它的意思是拿到存储在寄存器 r 中的地址，然后给地址加 n 个字节。
 
-我们来看一个简单但完整的 x86-64 程序示例。该程序计算式子\code{(+ 52 (- 10))}的值，
+图\ref{fig:x86-eg}是一个简单的 x86-64 程序。
+该程序计算式子\code{(+ 52 (- 10))}的值，
 并将结果作为整个程序的返回值。
 
+\begin{figure}[h]
+\begin{center}
+\begin{tabular}{c}
 \begin{lstlisting}
-start:
-movq	$10, -8(%rbp)
-negq	-8(%rbp)
-movq	-8(%rbp), %rax
-addq	$52, %rax
-jmp conclusion
-
-.globl main
-main:
-pushq	%rbp
-movq	%rsp, %rbp
-subq	$16, %rsp
-jmp start
-conclusion:
-addq	$16, %rsp
-popq	%rbp
-retq
+  start:
+    movq  $10, -8(%rbp)
+    negq  -8(%rbp)
+    movq  -8(%rbp), %rax
+    addq  $52, %rax
+    jmp conclusion
+    .globl main
+  main:
+    pushq %rbp
+    movq  %rsp, %rbp
+    subq  $16, %rsp
+    jmp start
+  conclusion:
+    addq  $16, %rsp
+    popq  %rbp
+    retq
 \end{lstlisting}
+\end{tabular}
+\end{center}
+
+	\caption{x86-64程序示例}
+	\label{fig:x86-eg}
+\end{figure}
+
+
 
 这个程序使用一个称为过程调用栈 (简称栈) 的内存区域。
 堆栈由每个过程调用的独立帧组成。单个帧的内存布局如图\ref{fig:frame}所示。
@@ -59,14 +66,15 @@ retq
 
 \begin{figure}[t]
 	\centering
-	\begin{tabular}{|r|l|} \hline
+    \renewcommand{\arraystretch}{1.3}
+	\begin{tabular}{|c|c|} \hline
 		位置 & 内容 \\ \hline
-		8(\key{\%rbp}) & return address \\
-		0(\key{\%rbp}) & old \key{rbp} \\
-		-8(\key{\%rbp}) & variable $1$ \\
-		-16(\key{\%rbp}) & variable $2$ \\
+		\key{(8\%rbp)} & return address \\
+		\key{(0\%rbp)} & old \key{rbp} \\
+		\key{(-8\%rbp)} & variable $1$ \\
+		\key{(-16\%rbp)} & variable $2$ \\
 		\ldots  & \ldots \\
-		0(\key{\%rsp}) & variable $n$\\ \hline
+		\key{(0\%rsp)} & variable $n$\\ \hline
 	\end{tabular}
 
 	\caption{栈帧的内存布局}
@@ -109,9 +117,12 @@ x86 提供标签，以便可以引用指令的位置，这是跳转指令所需�
 标签也可以用来标记函数指令的开头。
 我们还可以通过使用 leaq 指令和 PC 相对寻址来获得一个标签的地址。
 例如，下面这条指令把 add 函数的地址放入 rbx 寄存器中：
+
+\begin{onelinecode}
 \begin{lstlisting}
 leaq add1(%rip), %rbx
 \end{lstlisting}
+\end{onelinecode}
 
 指令指针寄存器 rip，也就是程序计数器始终指向要执行的下一条指令。
 当与一个标签结合时，如\code{add1(\%rip)}，
@@ -122,31 +133,36 @@ leaq add1(%rip), %rbx
 由于支持一等函数，也就是将函数当作普通的变量，函数可能会被赋值给其他变量。
 也就是说，某个变量中存放的可能是一个函数地址，调用这个变量就相当于调用函数，
 亦即间接函数调用。对应的 x86 指令是接受一个寄存器名的 callq* 指令：
+\begin{onelinecode}
 \begin{lstlisting}
 callq *%rbx
 \end{lstlisting}
+\end{onelinecode}
 
 callq 指令为实现函数提供了部分支持：它将返回地址压入堆栈，
 然后跳转到目标函数。但是 callq 不处理：
-\begin{enumerate}
-\item 参数传递
-\item 把帧压入过程调用栈以及取出或访问它们
-\item 确定不同函数如何共享寄存器
-\end{enumerate}
+(1) 参数传递；
+(2) 把帧压入过程调用栈以及取出或访问它们；
+(3) 确定不同函数如何共享寄存器。
+
 
 函数调用需要两段代码之间的协调，这两段代码可能由不同的程序员编写或由不同的编译器生成。
 这里我们遵循 Linux 和 MacOS 上的 GNU C 编译器使用的
 System V 调用约定\cite{Matz_Hubicka_Jaeger_Mitchell_2013}。
 调用约定包括关于函数如何共享寄存器使用的规则。
 特别是，调用方负责在函数调用之前释放一些寄存器，供被调用方使用。
-这些被称为“调用者保存寄存器”，它们是
+这些被称为“调用者保存寄存器”：
+\begin{onelinecode}
 \begin{lstlisting}
 rax rcx rdx rsi rdi r8 r9 r10 r11
 \end{lstlisting}
-另一方面，被调用方负责保留“被调用者保存寄存器”，即
+\end{onelinecode}
+另一方面，被调用方负责保留“被调用者保存寄存器”，即：
+\begin{onelinecode}
 \begin{lstlisting}
 rsp rbp rbx r12 r13 r14 r15
 \end{lstlisting}
+\end{onelinecode}
 
 我们可以从调用方视角和被调用方视角两个角度来考虑这个调用约定:
 \begin{itemize}
@@ -161,9 +177,11 @@ rsp rbp rbx r12 r13 r14 r15
 在 x86 中，寄存器还用于向函数传递参数和保存返回值。
 函数的前六个参数按以下顺序，在以下六个寄存器中传递。
 
+\begin{onelinecode}
 \begin{lstlisting}
 rdi rsi rdx rcx r8 r9
 \end{lstlisting}
+\end{onelinecode}
 
 多余的参数则保存在调用方的栈帧上。
 寄存器 rax 则用于函数的返回值。
@@ -177,15 +195,24 @@ $f_1$ 调用 $f_2$ ， $f_2$ 调用 $f_3$, $\ldots$ ， $f_{n-1}$ 调用$f_n$ �
 那么堆栈空间的大小就是 $O(n)$ 。
 在递归或相互递归函数的情况下，深度$n$ 可以变得很大。
 但是，如果函数调用表达式位于尾位置（尾位置的定义见\ref{sec:control}节），我们把它称为尾调用，它就不会导致调用栈的深度增加。
-例如，在下面的求和函数中的递归调用就是尾调用。
+例如，下面的求和函数中的递归调用就是尾调用。
 
+\begin{figure}[h]
+\begin{center}
+\begin{tabular}{c}
 \begin{lstlisting}
-(define (sum [n : Integer] [result : Integer]) : Integer
+(define (sum n result)
   (if (eq? n 0)
       result
       (sum (- n 1) (+ result n))))
 (sum 5 0)
 \end{lstlisting}
+\end{tabular}
+\end{center}
+
+	\caption{尾调用示例}
+	\label{fig:tail-call-eg}
+\end{figure}
 
 尾调用时不再需要调用方的帧，因此可以在进行尾调用之前弹出调用方的帧。
 通过这种方法，只进行尾调用的递归函数将只使用 $O(1)$ 的栈空间。
@@ -195,9 +222,12 @@ $f_1$ 调用 $f_2$ ， $f_2$ 调用 $f_3$, $\ldots$ ， $f_{n-1}$ 调用$f_n$ �
 在将来尾调用完成时，它就不再需要也不能返回当前函数，而是直接返回到调用当前函数的那个函数。
 因此尾调用不再使用callq指令，而是直接使用jmp指令进行跳转。
 与间接函数调用类似，x86使用前面带一个星号的寄存器跳转指令来表示间接跳转：
+\begin{onelinecode}
 \begin{lstlisting}
 jmp *%rax
 \end{lstlisting}
+\end{onelinecode}
+
 这里我们统一使用rax，因为跳转指令前面插入的那些结束工作指令会把一些数据恢复回到寄存器里，
 这些数据将来还要被使用，不能覆盖掉它们。而rax此时总是空闲的。
 
@@ -205,3 +235,12 @@ jmp *%rax
 多余的参数则使用过程调用栈来传递。
 加入尾递归优化之后，用栈来传参就很困难了。因此在后面的编译过程中，
 我们会把第六个及其后面的参数放入一个向量中，把这个向量作为第六个参数，以此来解决这个问题。
+
+\section{本章小结}
+
+本章简要介绍了 x86-64 汇编语言的相关知识。
+首先通过一个简单的示例程序来讲解 x86-64 汇编语言的语法和过程调用栈；
+然后讲解了 x86 对函数调用的支持，
+并介绍了本文选择的 System V 调用约定和寄存器分配策略；
+最后一节介绍了尾调用的概念，为什么尾调用可以被优化以及如何
+在汇编层面实现尾调用的优化。
