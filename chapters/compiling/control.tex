@@ -19,11 +19,11 @@
 三
 \begin{transformation}
 \begin{lstlisting}
-  (let ([y
-      (let ([x1 20])
-        (let ([x2 22])
-          (+ x1 x2)))])
-    y)
+ (let ([y
+     (let ([x1 20])
+       (let ([x2 22])
+         (+ x1 x2)))])
+   y)
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
@@ -47,6 +47,7 @@
 (1) \code{(FunctionDef params body)}中，\code{body}处于尾位置。
 
 (2) 如果 \code{(let x e body)} 处于尾位置，则\code{body}处于尾位置。
+
 
 
 我们使用两个相互递归的函数explicate-tail 和 explicate-assign 来实现，如图\ref{fig:explicate-control-implementation}所示。
@@ -83,8 +84,7 @@
     \caption{显示化控制流的实现}
     \label{fig:explicate-control-implementation}
 \end{figure}
-\begin{multilinecode}
-\end{multilinecode}
+
 
 explicate-tail 函数应用于位于尾位置的表达式，
 而 explicate-assign 函数应用于出现在 \key{let} 右侧的表达式。
@@ -120,34 +120,39 @@ explicate-tail 函数应用于位于尾位置的表达式，
 它们也都返回一串四元式序列。
 加入分支后，\code{explicate-pred}函数中要生成一些跳转语句，
 分别指向then-cont和else-cont。
-最终，这趟编译过程将能够完成下面这样的转换：
+最终，这趟编译过程将能够完成如图\ref{fig:explicate-control-eg}的转换。
 
+
+\begin{figure}
 \begin{transformation}
 \begin{lstlisting}
-(let ([x (read)])
-  (let ([y (read)])
-    (if (if (< x 1)
-            (eq? x 0)
-            (eq? x 2))
-        (+ y 2)
-        (+ y 10))))
+ (let ([x (read)])
+   (let ([y (read)])
+     (if (if (< x 1)
+             (eq? x 0)
+             (eq? x 2))
+         (+ y 2)
+         (+ y 10))))
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
-start:
+ start:
    x = (read);
    y = (read);
    if (< x 1) goto block40;
    else goto block41;
-block40:
+ block40:
    if (eq? x 0) goto block38;
    else goto block39;
-block41:
+ block41:
    if (eq? x 2) goto block38;
    else goto block39;
-block38:
+ block38:
    return (+ y 2);
-block39:
+ block39:
    return (+ y 10);
 \end{lstlisting}
 \end{transformation}
+    \caption{显示化控制流示例}
+    \label{fig:explicate-control-eg}
+\end{figure}

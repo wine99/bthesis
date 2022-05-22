@@ -125,15 +125,17 @@ f 接受一个参数 x，在其内部创建一个值为 4 的局部变量 y，�
 第一个元素是函数，而这个函数又接受这个闭包作为第一个参数。
 （想要正确描述闭包的类型需要使用存在类型\cite{Minamide_Morrisett_Harper_1996}。）
 
+
 \begin{figure}[t]
 \centering \includegraphics[width=0.6\textwidth]{figures/closures}
 \caption{闭包示意图}
 \label{fig:closure-eg}
 \end{figure}
 
+
 \begin{figure}[tbp]
-  \begin{minipage}{0.8\textwidth}
-% tests/lambda_test_6.rkt
+\begin{center}
+  \begin{minipage}{0.92\textwidth}
 \begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
 (define (f [x : Int]) : (Int -> Int)
   (let ([y 4])
@@ -167,6 +169,7 @@ $\Rightarrow$
 
 \caption{闭包转换示例}
 \label{fig:colure-conversion-eg}
+\end{center}
 \end{figure}
 
 

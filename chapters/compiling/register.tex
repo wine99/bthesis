@@ -62,6 +62,7 @@ L_{\mathsf{before}}(k) = L_{\mathsf{before'}}(1) \cup L_{\mathsf{before}}(k+1)
 重复进行下去，直到所有块的live-before集合都不再增大。
 这种迭代分析控制流图的方法叫作数据流分析\cite{Kildall_1973}，
 它也适用于许多其他静态分析问题。
+\begin{comment}
 下面的代码描述了这一迭代过程。其中\code{trans-G}是转置后的控制流图，
 用以计算哪些基本块指向了某一个块，
 \code{label->live}是一个字典，用于记录每个基本块的live-before集合。
@@ -77,6 +78,8 @@ L_{\mathsf{before}}(k) = L_{\mathsf{before'}}(1) \cup L_{\mathsf{before}}(k+1)
     (for ([label^ (in-neighbors trans-G label)])
       (enqueue! worklist label^))))
 \end{lstlisting}
+\end{comment}
+
 
 \subsection{使用图着色算法进行分配}
 

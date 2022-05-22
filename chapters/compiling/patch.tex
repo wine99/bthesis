@@ -13,8 +13,8 @@ movq -8(%rbp), -16(%rbp)
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
-movq -8(%rbp), %rax
-movq %rax, -16(%rbp)
+  movq -8(%rbp), %rax
+  movq %rax, -16(%rbp)
 \end{lstlisting}
 \end{transformation}
 
@@ -22,12 +22,12 @@ movq %rax, -16(%rbp)
 而是使用了栈空间，我们同样要做一次中转：
 \begin{transformation}
 \begin{lstlisting}
-callq *-8(%rbp)
+     callq *-8(%rbp)
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
-movq -8(%rbp), %rax
-callq *%rax
+  movq -8(%rbp), %rax
+  callq *%rax
 \end{lstlisting}
 \end{transformation}
 

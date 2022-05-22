@@ -44,7 +44,7 @@ read 函数在 x86 汇编中没有直接对应的功能，
 这些功能合在一起被称为“运行时系统”，或简称为“运行时”。
 \begin{transformation}
 \begin{lstlisting}
-    |$\itm{var}$| = (read);
+      |$\itm{var}$| = (read);
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
@@ -58,7 +58,7 @@ Return语句的翻译方法和上面两个例子是一样的，只要把赋值�
 然后是布尔运算\code{not}：
 \begin{transformation}
 \begin{lstlisting}
-    |$\itm{var}$| = (not |$\Atm$|);
+     |$\itm{var}$| = (not |$\Atm$|);
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
@@ -119,8 +119,8 @@ else goto |$\ell_2$|;
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
-movq |$\itm{vec}$|, %r11
-movq |$8(n+1)$|(%r11), |$\itm{var}$|
+  movq |$\itm{vec}$|, %r11
+  movq |$8(n+1)$|(%r11), |$\itm{var}$|
 \end{lstlisting}
 \end{transformation}
 
@@ -130,21 +130,22 @@ movq |$8(n+1)$|(%r11), |$\itm{var}$|
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
-movq |$\itm{vec}$|, %r11
-movq |$\itm{arg}$|, |$8(n+1)$|(%r11)
+  movq |$\itm{vec}$|, %r11
+  movq |$\itm{arg}$|, |$8(n+1)$|(%r11)
 \end{lstlisting}
 \end{transformation}
 
 \begin{transformation}
 \begin{lstlisting}
-|$\itm{vec}$| = (allocate |$n$| |$\itm{type}$|);
+ |$\itm{vec}$| = (allocate |$n$| |$\itm{type}$|);
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
-movq free_ptr(%rip), %r11
-addq |$8(n+1),$| free_ptr(%rip)
-movq $|$\itm{tag}$|, 0(%r11)
-movq %r11, |$\itm{var}$|
+  movq free_ptr(%rip), %r11
+  addq |$8(n+1)$|,
+       free_ptr(%rip)
+  movq $|$\itm{tag}$|, 0(%r11)
+  movq %r11, |$\itm{var}$|
 \end{lstlisting}
 \end{transformation}
 
@@ -154,9 +155,9 @@ movq %r11, |$\itm{var}$|
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
-movq %r15, %rdi
-movq $|\itm{bytes}|, %rsi
-callq collect
+  movq %r15, %rdi
+  movq $|\itm{bytes}|, %rsi
+  callq collect
 \end{lstlisting}
 \end{transformation}
 
@@ -172,10 +173,10 @@ callq collect
 最后是函数。对于每个函数定义，我们都需要把参数从参数寄存器里移到对应的变量名中：
 \begin{transformation}
 \begin{lstlisting}
-       start:
-          |$\itm{instr}_1$|
-          |$\vdots$|
-          |$\itm{instr}_n$|
+        start:
+           |$\itm{instr}_1$|
+           |$\vdots$|
+           |$\itm{instr}_n$|
 \end{lstlisting}
 \compilesto
 \begin{lstlisting}
